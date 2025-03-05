@@ -87,9 +87,6 @@ const Navbar = ({
                 </a>
               </motion.div>
             ))}
-            <Button size="sm" className="ml-4">
-              Contato
-            </Button>
           </nav>
 
           {/* Mobile Menu Button */}
