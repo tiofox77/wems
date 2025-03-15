@@ -1,159 +1,311 @@
-// Simple local database using localStorage
+// Verificar se o Supabase está configurado
+import { isSupabaseConfigured } from "./supabase";
 
-// Define types for our data
-export interface Slide {
-  id: string;
-  title: string;
-  subtitle: string;
-  description: string;
-  imageUrl: string;
-  buttonText?: string;
-  buttonHref?: string;
-}
+// Importar funções de armazenamento local e no servidor
+import * as localStorage from "./localDbIndexed";
+import * as serverStorage from "./serverStorage";
+import * as jsonFileStorage from "./jsonFileStorage";
 
-export interface Partner {
-  id: number;
-  name: string;
-  logo: string;
-}
+// Exportar todos os tipos do módulo localDbIndexed
+export type {
+  Slide,
+  Partner,
+  Service,
+  ClientCategory,
+  Image,
+  ContactData,
+  AboutData,
+  MissionVisionData,
+  SiteSettings,
+  ContactFormSubmission,
+} from "./db";
 
-export interface Service {
-  id: number;
-  title: string;
-  description: string;
-  icon: string;
-  detailedInfo: string;
-  features: string[];
-}
+// Exportar constantes
+export { DATABASE_TABLES, DATABASE_KEYS } from "./localDbIndexed";
 
-export interface Client {
-  id: number;
-  name: string;
-  logo: string;
-  description: string;
-}
+// Função para determinar qual armazenamento usar
+const getStorageType = () => {
+  // Verificar preferência de armazenamento
+  let storageType = "jsonFile"; // Default to jsonFile
 
-export interface ClientCategory {
-  id: string;
-  name: string;
-  clients: Client[];
-}
-
-export interface Image {
-  id: number;
-  name: string;
-  url: string;
-  section: string;
-  uploadedAt: string;
-}
-
-export interface ContactData {
-  title: string;
-  subtitle: string;
-  contactInfo: {
-    address: string;
-    email: string;
-    phone: string;
-    mapIframe: string;
-  };
-}
-
-// Database keys
-const DB_KEYS = {
-  SLIDES: "wems_slides",
-  PARTNERS: "wems_partners",
-  SERVICES: "wems_services",
-  CLIENT_CATEGORIES: "wems_client_categories",
-  IMAGES: "wems_images",
-  CONTACT: "wems_contact",
-  SITE_LOGO: "wems_site_logo",
-};
-
-// Generic functions to save and load data
-const saveData = <T>(key: string, data: T): void => {
-  try {
-    localStorage.setItem(key, JSON.stringify(data));
-  } catch (error) {
-    console.error(`Error saving data to ${key}:`, error);
+  if (typeof localStorage !== "undefined") {
+    storageType = localStorage.getItem("wems_storage_type") || "jsonFile";
   }
+
+  // Não fazer verificação adicional aqui, pois isSupabaseConfigured já verifica a preferência
+  // e isso pode causar referência circular
+
+  return storageType; // "local", "server" ou "jsonFile"
 };
 
-const loadData = <T>(key: string, defaultData: T): T => {
-  try {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : defaultData;
-  } catch (error) {
-    console.error(`Error loading data from ${key}:`, error);
-    return defaultData;
+// Função auxiliar para verificar se deve usar armazenamento no servidor (Supabase)
+const useServerStorage = () => {
+  return getStorageType() === "server";
+};
+
+// Função auxiliar para verificar se deve usar armazenamento em arquivo JSON
+const useJsonFileStorage = () => {
+  return getStorageType() === "jsonFile";
+};
+
+// Funções de gerenciamento de dados que escolhem entre armazenamento local e servidor
+export const clearData = async (table: string): Promise<boolean> => {
+  return localStorage.clearData(table);
+};
+
+export const clearAllData = async (): Promise<boolean> => {
+  return localStorage.clearAllData();
+};
+
+export const getDatabaseInfo = async () => {
+  return localStorage.getDatabaseInfo();
+};
+
+export const exportAllData = async (): Promise<boolean> => {
+  return localStorage.exportAllData();
+};
+
+export const importAllData = async (file: File): Promise<boolean> => {
+  return localStorage.importAllData(file);
+};
+
+// Funções específicas para cada tipo de dado
+export const saveSlides = async (
+  slides: localStorage.Slide[],
+): Promise<boolean> => {
+  if (useServerStorage()) {
+    return serverStorage.saveSlides(slides);
+  } else if (useJsonFileStorage()) {
+    return jsonFileStorage.saveSlides(slides);
   }
+  return localStorage.saveSlides(slides);
 };
 
-// Specific functions for each data type
-export const saveSlides = (slides: Slide[]): void => {
-  saveData(DB_KEYS.SLIDES, slides);
+export const loadSlides = async (
+  defaultSlides: localStorage.Slide[],
+): Promise<localStorage.Slide[]> => {
+  if (useServerStorage()) {
+    return serverStorage.loadSlides(defaultSlides);
+  } else if (useJsonFileStorage()) {
+    return jsonFileStorage.loadSlides(defaultSlides);
+  }
+  return localStorage.loadSlides(defaultSlides);
 };
 
-export const loadSlides = (defaultSlides: Slide[]): Slide[] => {
-  return loadData(DB_KEYS.SLIDES, defaultSlides);
+export const savePartners = async (
+  partners: localStorage.Partner[],
+): Promise<boolean> => {
+  if (useServerStorage()) {
+    return serverStorage.savePartners(partners);
+  } else if (useJsonFileStorage()) {
+    return jsonFileStorage.savePartners(partners);
+  }
+  return localStorage.savePartners(partners);
 };
 
-export const savePartners = (partners: Partner[]): void => {
-  saveData(DB_KEYS.PARTNERS, partners);
+export const loadPartners = async (
+  defaultPartners: localStorage.Partner[],
+): Promise<localStorage.Partner[]> => {
+  if (useServerStorage()) {
+    return serverStorage.loadPartners(defaultPartners);
+  } else if (useJsonFileStorage()) {
+    return jsonFileStorage.loadPartners(defaultPartners);
+  }
+  return localStorage.loadPartners(defaultPartners);
 };
 
-export const loadPartners = (defaultPartners: Partner[]): Partner[] => {
-  return loadData(DB_KEYS.PARTNERS, defaultPartners);
+export const saveServices = async (
+  services: localStorage.Service[],
+): Promise<boolean> => {
+  if (useServerStorage()) {
+    return serverStorage.saveServices(services);
+  } else if (useJsonFileStorage()) {
+    return jsonFileStorage.saveServices(services);
+  }
+  return localStorage.saveServices(services);
 };
 
-export const saveServices = (services: Service[]): void => {
-  saveData(DB_KEYS.SERVICES, services);
+export const loadServices = async (
+  defaultServices: localStorage.Service[],
+): Promise<localStorage.Service[]> => {
+  if (useServerStorage()) {
+    return serverStorage.loadServices(defaultServices);
+  } else if (useJsonFileStorage()) {
+    return jsonFileStorage.loadServices(defaultServices);
+  }
+  return localStorage.loadServices(defaultServices);
 };
 
-export const loadServices = (defaultServices: Service[]): Service[] => {
-  return loadData(DB_KEYS.SERVICES, defaultServices);
+export const saveClientCategories = async (
+  categories: localStorage.ClientCategory[],
+): Promise<boolean> => {
+  if (useServerStorage()) {
+    return serverStorage.saveClientCategories(categories);
+  } else if (useJsonFileStorage()) {
+    return jsonFileStorage.saveClientCategories(categories);
+  }
+  return localStorage.saveClientCategories(categories);
 };
 
-export const saveClientCategories = (categories: ClientCategory[]): void => {
-  saveData(DB_KEYS.CLIENT_CATEGORIES, categories);
+export const loadClientCategories = async (
+  defaultCategories: localStorage.ClientCategory[],
+): Promise<localStorage.ClientCategory[]> => {
+  if (useServerStorage()) {
+    return serverStorage.loadClientCategories(defaultCategories);
+  } else if (useJsonFileStorage()) {
+    return jsonFileStorage.loadClientCategories(defaultCategories);
+  }
+  return localStorage.loadClientCategories(defaultCategories);
 };
 
-export const loadClientCategories = (
-  defaultCategories: ClientCategory[],
-): ClientCategory[] => {
-  return loadData(DB_KEYS.CLIENT_CATEGORIES, defaultCategories);
+export const saveContactData = async (
+  contactData: localStorage.ContactData,
+): Promise<boolean> => {
+  if (useServerStorage()) {
+    return serverStorage.saveContactData(contactData);
+  } else if (useJsonFileStorage()) {
+    return jsonFileStorage.saveContactData(contactData);
+  }
+  return localStorage.saveContactData(contactData);
 };
 
-export const saveImages = (images: Image[]): void => {
-  saveData(DB_KEYS.IMAGES, images);
+export const loadContactData = async (
+  defaultContactData: localStorage.ContactData,
+): Promise<localStorage.ContactData> => {
+  if (useServerStorage()) {
+    return serverStorage.loadContactData(defaultContactData);
+  } else if (useJsonFileStorage()) {
+    return jsonFileStorage.loadContactData(defaultContactData);
+  }
+  return localStorage.loadContactData(defaultContactData);
 };
 
-export const loadImages = (defaultImages: Image[]): Image[] => {
-  return loadData(DB_KEYS.IMAGES, defaultImages);
+export const saveAboutData = async (
+  aboutData: localStorage.AboutData,
+): Promise<boolean> => {
+  if (useServerStorage()) {
+    return serverStorage.saveAboutData(aboutData);
+  } else if (useJsonFileStorage()) {
+    return jsonFileStorage.saveAboutData(aboutData);
+  }
+  return localStorage.saveAboutData(aboutData);
 };
 
-export const saveContactData = (contactData: ContactData): void => {
-  saveData(DB_KEYS.CONTACT, contactData);
+export const loadAboutData = async (
+  defaultAboutData: localStorage.AboutData,
+): Promise<localStorage.AboutData> => {
+  if (useServerStorage()) {
+    return serverStorage.loadAboutData(defaultAboutData);
+  } else if (useJsonFileStorage()) {
+    return jsonFileStorage.loadAboutData(defaultAboutData);
+  }
+  return localStorage.loadAboutData(defaultAboutData);
 };
 
-export const loadContactData = (
-  defaultContactData: ContactData,
-): ContactData => {
-  return loadData(DB_KEYS.CONTACT, defaultContactData);
+export const saveMissionVisionData = async (
+  data: localStorage.MissionVisionData,
+): Promise<boolean> => {
+  if (useServerStorage()) {
+    return serverStorage.saveMissionVisionData(data);
+  } else if (useJsonFileStorage()) {
+    return jsonFileStorage.saveMissionVisionData(data);
+  }
+  return localStorage.saveMissionVisionData(data);
 };
 
-export const saveSiteLogo = (logoUrl: string): void => {
-  saveData(DB_KEYS.SITE_LOGO, { url: logoUrl });
-  // Dispatch a storage event to notify other components
-  window.dispatchEvent(
-    new StorageEvent("storage", {
-      key: DB_KEYS.SITE_LOGO,
-      newValue: JSON.stringify({ url: logoUrl }),
-      storageArea: localStorage,
-    }),
-  );
+export const loadMissionVisionData = async (
+  defaultData: localStorage.MissionVisionData,
+): Promise<localStorage.MissionVisionData> => {
+  if (useServerStorage()) {
+    return serverStorage.loadMissionVisionData(defaultData);
+  } else if (useJsonFileStorage()) {
+    return jsonFileStorage.loadMissionVisionData(defaultData);
+  }
+  return localStorage.loadMissionVisionData(defaultData);
 };
 
-export const loadSiteLogo = (defaultLogoUrl: string): string => {
-  const data = loadData(DB_KEYS.SITE_LOGO, { url: defaultLogoUrl });
-  return data.url;
+export const saveSiteSettings = async (
+  settings: localStorage.SiteSettings,
+): Promise<boolean> => {
+  if (useServerStorage()) {
+    return serverStorage.saveSiteSettings(settings);
+  } else if (useJsonFileStorage()) {
+    return jsonFileStorage.saveSiteSettings(settings);
+  }
+  return localStorage.saveSiteSettings(settings);
+};
+
+export const loadSiteSettings = async (
+  defaultSettings: localStorage.SiteSettings,
+): Promise<localStorage.SiteSettings> => {
+  if (useServerStorage()) {
+    return serverStorage.loadSiteSettings(defaultSettings);
+  } else if (useJsonFileStorage()) {
+    return jsonFileStorage.loadSiteSettings(defaultSettings);
+  }
+  return localStorage.loadSiteSettings(defaultSettings);
+};
+
+export const saveSiteLogo = async (logoUrl: string): Promise<boolean> => {
+  if (useServerStorage()) {
+    return serverStorage.saveSiteLogo(logoUrl);
+  } else if (useJsonFileStorage()) {
+    return jsonFileStorage.saveSiteLogo(logoUrl);
+  }
+  return localStorage.saveSiteLogo(logoUrl);
+};
+
+export const loadSiteLogo = async (defaultLogoUrl: string): Promise<string> => {
+  if (useServerStorage()) {
+    return serverStorage.loadSiteLogo(defaultLogoUrl);
+  } else if (useJsonFileStorage()) {
+    return jsonFileStorage.loadSiteLogo(defaultLogoUrl);
+  }
+  return localStorage.loadSiteLogo(defaultLogoUrl);
+};
+
+export const saveContactSubmission = async (
+  submission: Omit<
+    localStorage.ContactFormSubmission,
+    "id" | "timestamp" | "status"
+  >,
+): Promise<string> => {
+  if (useServerStorage()) {
+    return serverStorage.saveContactSubmission(submission);
+  } else if (useJsonFileStorage()) {
+    return jsonFileStorage.saveContactSubmission(submission);
+  }
+  return localStorage.saveContactSubmission(submission);
+};
+
+export const loadContactSubmissions = async (
+  defaultSubmissions: localStorage.ContactFormSubmission[],
+): Promise<localStorage.ContactFormSubmission[]> => {
+  if (useServerStorage()) {
+    return serverStorage.loadContactSubmissions(defaultSubmissions);
+  } else if (useJsonFileStorage()) {
+    return jsonFileStorage.loadContactSubmissions(defaultSubmissions);
+  }
+  return localStorage.loadContactSubmissions(defaultSubmissions);
+};
+
+export const updateContactSubmissionStatus = async (
+  id: string,
+  status: "new" | "read" | "responded",
+): Promise<boolean> => {
+  if (useServerStorage()) {
+    return serverStorage.updateContactSubmissionStatus(id, status);
+  } else if (useJsonFileStorage()) {
+    return jsonFileStorage.updateContactSubmissionStatus(id, status);
+  }
+  return localStorage.updateContactSubmissionStatus(id, status);
+};
+
+export const deleteContactSubmission = async (id: string): Promise<boolean> => {
+  if (useServerStorage()) {
+    return serverStorage.deleteContactSubmission(id);
+  } else if (useJsonFileStorage()) {
+    return jsonFileStorage.deleteContactSubmission(id);
+  }
+  return localStorage.deleteContactSubmission(id);
 };

@@ -4,8 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Mail, MapPin, Phone } from "lucide-react";
-import { loadContactData, ContactData } from "@/lib/localDb";
+import {
+  Loader2,
+  Mail,
+  MapPin,
+  Phone,
+  CheckCircle,
+  AlertCircle,
+} from "lucide-react";
 
 interface ContactSectionProps {
   title?: string;
@@ -27,7 +33,7 @@ const ContactSection = ({
     email: "info@wems.co.ao",
     phone: "+244 923 456 789",
     mapIframe:
-      "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d31603.45339484696!2d13.2187654!3d-8.8368338!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x1a51f15cdc8d2c7d%3A0x850c1c5c5ecc5a92!2sLuanda%2C%20Angola!5e0!3m2!1sen!2sus!4v1653389034695!5m2!1sen!2sus",
+      "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d31603.45339484696!2d13.2187654!3d-8.8368338!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x1a51f15cdc8d2c7d%3A0x850c1c5c5ecc5a92!2sLuanda,+Angola!5e0!3m2!1sen!2sus!4v1653389034695!5m2!1sen!2sus",
   },
 }: ContactSectionProps) => {
   const [contactData, setContactData] = useState({
@@ -44,6 +50,8 @@ const ContactSection = ({
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [submitStatus, setSubmitStatus] = useState({
     success: false,
     message: "",
@@ -51,13 +59,46 @@ const ContactSection = ({
 
   // Load contact data from localStorage on component mount
   useEffect(() => {
-    const defaultData = {
-      title,
-      subtitle,
-      contactInfo,
+    const fetchContactData = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        // Try to load from localStorage first as a fallback
+        const localData = localStorage.getItem("wems_contact");
+        if (localData) {
+          try {
+            const parsedData = JSON.parse(localData);
+            if (parsedData && parsedData.contactInfo) {
+              setContactData(parsedData);
+              setIsLoading(false);
+              return;
+            }
+          } catch (e) {
+            console.error("Error parsing contact data from localStorage:", e);
+          }
+        }
+
+        // If no data in localStorage, use default data
+        setContactData({
+          title,
+          subtitle,
+          contactInfo,
+        });
+      } catch (err) {
+        console.error("Error loading contact data:", err);
+        setError("Erro ao carregar dados de contato");
+        // Keep the default data if there's an error
+        setContactData({
+          title,
+          subtitle,
+          contactInfo,
+        });
+      } finally {
+        setIsLoading(false);
+      }
     };
-    const savedData = loadContactData(defaultData as ContactData);
-    setContactData(savedData);
+
+    fetchContactData();
   }, [title, subtitle, contactInfo]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -74,20 +115,11 @@ const ContactSection = ({
         Mensagem: ${formData.message}
       `;
 
-      // In a real application, you would send this to your backend
-      // For this demo, we'll simulate an API call
-      console.log("Sending email to carlosfox1782@gmail.com");
-      console.log("Email content:", emailContent);
-
-      // Simulate API delay
+      // Simulate sending email
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      // Simulate successful submission
-      setSubmitStatus({
-        success: true,
-        message:
-          "Mensagem enviada com sucesso! Entraremos em contato em breve.",
-      });
+      // For demo purposes, just log the email content
+      console.log("Email content:", emailContent);
 
       // Reset form
       setFormData({
@@ -96,22 +128,38 @@ const ContactSection = ({
         subject: "",
         message: "",
       });
-    } catch (error) {
-      console.error("Error sending email:", error);
+
+      // Show success message
+      setSubmitStatus({
+        success: true,
+        message:
+          "Mensagem enviada com sucesso! Entraremos em contato em breve.",
+      });
+    } catch (err) {
+      console.error("Error sending message:", err);
       setSubmitStatus({
         success: false,
-        message:
-          "Ocorreu um erro ao enviar sua mensagem. Por favor, tente novamente.",
+        message: "Erro ao enviar mensagem. Por favor, tente novamente.",
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
   return (
     <section
-      className="w-full py-20 px-4 md:px-8 lg:px-16 bg-background"
       id="contact"
+      className="w-full py-20 px-4 md:px-8 lg:px-16 bg-white dark:bg-slate-900"
     >
       <div className="max-w-7xl mx-auto">
         <motion.div
@@ -124,7 +172,7 @@ const ContactSection = ({
           <h2 className="text-3xl md:text-4xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">
             {contactData.title}
           </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
             {contactData.subtitle}
           </p>
         </motion.div>
@@ -132,97 +180,118 @@ const ContactSection = ({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Contact Form */}
           <motion.div
-            initial={{ opacity: 0, x: -50 }}
+            initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
             viewport={{ once: true }}
-            className="bg-card rounded-lg p-8 shadow-sm border border-border"
+            className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 md:p-8"
           >
-            <h3 className="text-xl font-semibold mb-6">
-              Envie-nos uma mensagem
-            </h3>
-            <form className="space-y-6" onSubmit={(e) => handleSubmit(e)}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome</Label>
-                  <Input
-                    id="name"
-                    placeholder="Seu nome"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    required
-                  />
+            <h3 className="text-2xl font-bold mb-6">Envie uma mensagem</h3>
+
+            {submitStatus.message && (
+              <div
+                className={`mb-6 p-4 rounded-md ${
+                  submitStatus.success
+                    ? "bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                    : "bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                }`}
+              >
+                <div className="flex items-center">
+                  {submitStatus.success ? (
+                    <CheckCircle className="h-5 w-5 mr-2" />
+                  ) : (
+                    <AlertCircle className="h-5 w-5 mr-2" />
+                  )}
+                  <p>{submitStatus.message}</p>
                 </div>
               </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome</Label>
+                <Input
+                  id="name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  placeholder="Seu nome"
+                  required
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  placeholder="seu.email@exemplo.com"
+                  required
+                  disabled={isSubmitting}
+                />
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="subject">Assunto</Label>
                 <Input
                   id="subject"
-                  placeholder="Assunto da mensagem"
+                  name="subject"
                   value={formData.subject}
-                  onChange={(e) =>
-                    setFormData({ ...formData, subject: e.target.value })
-                  }
+                  onChange={handleInputChange}
+                  placeholder="Assunto da mensagem"
                   required
+                  disabled={isSubmitting}
                 />
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="message">Mensagem</Label>
                 <Textarea
                   id="message"
-                  placeholder="Sua mensagem aqui..."
-                  rows={5}
+                  name="message"
                   value={formData.message}
-                  onChange={(e) =>
-                    setFormData({ ...formData, message: e.target.value })
-                  }
+                  onChange={handleInputChange}
+                  placeholder="Sua mensagem"
+                  rows={5}
                   required
+                  disabled={isSubmitting}
                 />
               </div>
+
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Enviando..." : "Enviar Mensagem"}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Enviando...
+                  </>
+                ) : (
+                  "Enviar Mensagem"
+                )}
               </Button>
-              {submitStatus.message && (
-                <div
-                  className={`mt-4 p-3 rounded-md ${submitStatus.success ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"}`}
-                >
-                  {submitStatus.message}
-                </div>
-              )}
             </form>
           </motion.div>
 
           {/* Contact Information */}
           <motion.div
-            initial={{ opacity: 0, x: 50 }}
+            initial={{ opacity: 0, x: 20 }}
             whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
             viewport={{ once: true }}
-            className="flex flex-col justify-between"
+            className="space-y-8"
           >
-            <div>
-              <h3 className="text-xl font-semibold mb-6">
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 md:p-8 mb-8">
+              <h3 className="text-2xl font-bold mb-6">
                 Informações de Contato
               </h3>
+
               <div className="space-y-6">
                 {contactData.contactInfo.address && (
-                  <div className="flex items-start space-x-4">
-                    <div className="bg-primary/10 p-3 rounded-full">
+                  <div className="flex items-start">
+                    <div className="bg-primary/10 p-3 rounded-full mr-4">
                       <MapPin className="h-6 w-6 text-primary" />
                     </div>
                     <div>
@@ -235,8 +304,8 @@ const ContactSection = ({
                 )}
 
                 {contactData.contactInfo.email && (
-                  <div className="flex items-start space-x-4">
-                    <div className="bg-primary/10 p-3 rounded-full">
+                  <div className="flex items-start">
+                    <div className="bg-primary/10 p-3 rounded-full mr-4">
                       <Mail className="h-6 w-6 text-primary" />
                     </div>
                     <div>
@@ -252,8 +321,8 @@ const ContactSection = ({
                 )}
 
                 {contactData.contactInfo.phone && (
-                  <div className="flex items-start space-x-4">
-                    <div className="bg-primary/10 p-3 rounded-full">
+                  <div className="flex items-start">
+                    <div className="bg-primary/10 p-3 rounded-full mr-4">
                       <Phone className="h-6 w-6 text-primary" />
                     </div>
                     <div>
@@ -271,20 +340,24 @@ const ContactSection = ({
             </div>
 
             {/* Map */}
-            <div className="mt-8 h-64 rounded-lg overflow-hidden border border-border">
-              {contactData.contactInfo.mapIframe ? (
-                <div
-                  dangerouslySetInnerHTML={{
-                    __html: contactData.contactInfo.mapIframe,
-                  }}
-                  className="w-full h-full"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-slate-800">
-                  <p className="text-muted-foreground">Mapa não disponível</p>
-                </div>
-              )}
-            </div>
+            {contactData.contactInfo.mapIframe && (
+              <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden h-[300px]">
+                <iframe
+                  src={
+                    contactData.contactInfo.mapIframe
+                      ? encodeURI(contactData.contactInfo.mapIframe)
+                      : ""
+                  }
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="WEMS Location Map"
+                ></iframe>
+              </div>
+            )}
           </motion.div>
         </div>
       </div>

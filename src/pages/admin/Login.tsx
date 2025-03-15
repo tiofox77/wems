@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,36 +13,140 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Lock, User, AlertCircle } from "lucide-react";
+import { Lock, User, AlertCircle, Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLogo } from "@/components/LogoProvider";
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login, isAuthenticated, loading: authLoading } = useAuth();
+  const { logoUrl } = useLogo();
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
-  // Admin credentials
-  const ADMIN_USERNAME = "admin";
-  const ADMIN_PASSWORD = "wems2024";
+  // Check if already authenticated via localStorage
+  useEffect(() => {
+    let isMounted = true;
 
-  const handleLogin = (e: React.FormEvent) => {
+    const checkAuth = () => {
+      try {
+        const isLocalAuth = localStorage.getItem("wemsAdminAuth") === "true";
+        if ((isLocalAuth || isAuthenticated) && isMounted) {
+          const from =
+            (location.state as any)?.from?.pathname || "/wemsadmin/dashboard";
+          navigate(from, { replace: true });
+        }
+      } catch (error) {
+        console.error("Error checking authentication:", error);
+      } finally {
+        if (isMounted) {
+          setCheckingAuth(false);
+        }
+      }
+    };
+
+    // Add a timeout to ensure the check completes
+    const timeoutId = setTimeout(() => {
+      if (isMounted && checkingAuth) {
+        console.warn("Auth check timeout - forcing completion");
+        setCheckingAuth(false);
+      }
+    }, 2000);
+
+    checkAuth();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
+  }, [isAuthenticated, navigate, location]);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
 
-    // Simulate API call
-    setTimeout(() => {
-      if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-        // Store authentication state
-        localStorage.setItem("wemsAdminAuth", "true");
-        navigate("/wemsadmin/dashboard");
-      } else {
-        setError("Credenciais inválidas. Por favor, tente novamente.");
-        setIsLoading(false);
+    try {
+      // For demo purposes, hardcode the admin credentials
+      if (username === "admin" && password === "wems2024") {
+        try {
+          // Store authentication state
+          localStorage.setItem("wemsAdminAuth", "true");
+          // Navigate to dashboard or the page they were trying to access
+          const from =
+            (location.state as any)?.from?.pathname || "/wemsadmin/dashboard";
+          navigate(from, { replace: true });
+          return;
+        } catch (storageError) {
+          console.error("Error storing auth in localStorage:", storageError);
+          // Continue to try the context login as fallback
+        }
       }
-    }, 1000);
+
+      // Try using the auth context login
+      try {
+        const success = await login(username, password);
+        if (success) {
+          // Navigate to dashboard or the page they were trying to access
+          const from =
+            (location.state as any)?.from?.pathname || "/wemsadmin/dashboard";
+          navigate(from, { replace: true });
+          return;
+        }
+      } catch (loginErr) {
+        console.error("Auth context login error:", loginErr);
+        // Continue to error handling below
+      }
+
+      // If we get here, login failed
+      setError("Credenciais inválidas. Por favor, tente novamente.");
+    } catch (err) {
+      setError("Ocorreu um erro durante o login. Por favor, tente novamente.");
+      console.error("Login error:", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  // Add a timeout for the loading state
+  useEffect(() => {
+    let isMounted = true;
+
+    const timeoutId = setTimeout(() => {
+      if (isMounted && authLoading) {
+        console.warn("Auth loading timeout - forcing completion");
+        // Instead of forcing a reload, just complete the loading state
+        setCheckingAuth(false);
+      }
+    }, 3000);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
+  }, [authLoading]);
+
+  // Helper function to show login credentials for demo purposes
+  const fillDemoCredentials = () => {
+    setUsername("admin");
+    setPassword("wems2024");
+  };
+
+  if (authLoading || checkingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900">
+        <div className="flex flex-col items-center">
+          <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900 p-4">
@@ -56,9 +160,12 @@ const Login = () => {
           <CardHeader className="space-y-1 text-center">
             <div className="flex justify-center mb-4">
               <img
-                src="https://wems.co.ao/wp-content/uploads/2022/05/logo_sticky_retina-81-1.png"
+                src={logoUrl || "/wems-logo.png"}
                 alt="WEMS Logo"
                 className="h-12"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "/wems-logo.png";
+                }}
               />
             </div>
             <CardTitle className="text-2xl font-bold">
@@ -111,8 +218,24 @@ const Login = () => {
                 </div>
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Entrando..." : "Entrar"}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Entrando...
+                  </>
+                ) : (
+                  "Entrar"
+                )}
               </Button>
+              <div className="text-center mt-2">
+                <button
+                  type="button"
+                  onClick={fillDemoCredentials}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Usar credenciais de demonstração
+                </button>
+              </div>
             </form>
           </CardContent>
           <CardFooter className="flex justify-center">

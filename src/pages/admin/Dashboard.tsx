@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "@/components/admin/AdminLayout";
 import {
@@ -8,17 +8,64 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { BarChart, FileText, Image, Users, Settings, Edit } from "lucide-react";
+import {
+  BarChart,
+  FileText,
+  Image,
+  Users,
+  Settings,
+  Edit,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Check if user is authenticated
   useEffect(() => {
-    const isAuthenticated = localStorage.getItem("wemsAdminAuth") === "true";
-    if (!isAuthenticated) {
-      navigate("/wemsadmin");
-    }
+    let isMounted = true;
+
+    const checkAuth = () => {
+      try {
+        const isAuthenticated =
+          localStorage.getItem("wemsAdminAuth") === "true";
+        if (!isAuthenticated && isMounted) {
+          navigate("/wemsadmin");
+          return;
+        }
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error("Error checking authentication:", error);
+        if (isMounted) {
+          setError(
+            "Erro ao verificar autenticação. Por favor, faça login novamente.",
+          );
+          setIsLoading(false);
+        }
+      }
+    };
+
+    // Add a timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      if (isMounted && isLoading) {
+        console.warn("Dashboard loading timeout - forcing completion");
+        setIsLoading(false);
+      }
+    }, 2000);
+
+    checkAuth();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
   }, [navigate]);
 
   const stats = [
@@ -58,6 +105,40 @@ const Dashboard = () => {
     { section: "Clientes", user: "Admin", date: "22/05/2024, 16:45" },
     { section: "Parceiros", user: "Admin", date: "20/05/2024, 09:30" },
   ];
+
+  const handleRetryLogin = () => {
+    localStorage.removeItem("wemsAdminAuth");
+    navigate("/wemsadmin");
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900">
+        <div className="flex flex-col items-center">
+          <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
+          <p className="text-muted-foreground">
+            Carregando painel administrativo...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900 p-4">
+        <div className="w-full max-w-md">
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+          <Button onClick={handleRetryLogin} className="w-full">
+            Voltar para o login
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AdminLayout>

@@ -19,6 +19,7 @@ const HeroSlider = ({
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [slides, setSlides] = useState<Slide[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { logoUrl } = useLogo();
 
   // Initial slide data for fallback
@@ -104,8 +105,20 @@ const HeroSlider = ({
 
   // Load slides from localStorage on component mount
   useEffect(() => {
-    const savedSlides = loadSlides(initialSlides);
-    setSlides(savedSlides);
+    const fetchSlides = async () => {
+      try {
+        setIsLoading(true);
+        const savedSlides = await loadSlides(initialSlides);
+        setSlides(savedSlides);
+      } catch (error) {
+        console.error("Error loading slides:", error);
+        setSlides(initialSlides);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSlides();
   }, []);
 
   // Auto-play functionality
@@ -146,9 +159,9 @@ const HeroSlider = ({
     setTimeout(() => setIsAutoPlaying(true), 5000);
   };
 
-  if (slides.length === 0) {
+  if (isLoading || slides.length === 0) {
     return (
-      <div className="h-screen bg-slate-900 flex items-center justify-center">
+      <div className="h-screen bg-slate-900 flex items-center justify-center text-white">
         Carregando...
       </div>
     );

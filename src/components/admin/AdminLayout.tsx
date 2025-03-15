@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard,
@@ -35,8 +36,10 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { logoUrl } = useLogo();
 
+  const { logout } = useAuth();
+
   const handleLogout = () => {
-    localStorage.removeItem("wemsAdminAuth");
+    logout();
     navigate("/wemsadmin");
   };
 

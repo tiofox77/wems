@@ -23,6 +23,11 @@ interface StrategicConsultingProps {
   }>;
 }
 
+// Helper function to encode any URLs or strings that might contain spaces
+const encodeSpaces = (str: string): string => {
+  return str.replace(/\s+/g, "+");
+};
+
 const StrategicConsultingSection = ({
   title = "Consultoria Estratégica",
   subtitle = "Soluções personalizadas para otimizar seus recursos e maximizar resultados",
@@ -77,6 +82,18 @@ const StrategicConsultingSection = ({
     },
   ],
 }: StrategicConsultingProps) => {
+  // Ensure all text that might be used in URLs is properly encoded
+  const encodedTitle = encodeSpaces(title);
+  const encodedSubtitle = encodeSpaces(subtitle);
+
+  // Process points to ensure all strings are properly encoded
+  const processedPoints = points.map((point) => ({
+    ...point,
+    title: point.title, // Keep original for display
+    description: point.description, // Keep original for display
+    encodedTitle: encodeSpaces(point.title), // For any URL usage
+  }));
+
   return (
     <section
       className="w-full py-20 px-4 md:px-8 lg:px-16 bg-slate-50 dark:bg-slate-900/50"
@@ -99,7 +116,7 @@ const StrategicConsultingSection = ({
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {points.map((point, index) => (
+          {processedPoints.map((point, index) => (
             <motion.div
               key={index}
               initial={{ opacity: 0, y: 20 }}

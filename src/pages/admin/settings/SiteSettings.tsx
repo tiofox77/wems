@@ -4,6 +4,9 @@ import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import LogoUploader from "@/components/admin/LogoUploader";
+import DataManagement from "@/components/admin/DataManagement";
+import JsonDataManager from "@/components/admin/JsonDataManager";
+import StorageConfigPanel from "@/components/admin/StorageConfigPanel";
 
 const SiteSettings = () => {
   const navigate = useNavigate();
@@ -26,8 +29,11 @@ const SiteSettings = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <LogoUploader />
-
-          {/* Additional settings can be added here in the future */}
+          <DataManagement />
+          <StorageConfigPanel />
+          <div className="lg:col-span-2">
+            <JsonDataManager />
+          </div>
         </div>
       </div>
     </AdminLayout>

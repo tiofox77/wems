@@ -1,42 +1,171 @@
-import { Suspense } from "react";
+import { Suspense, lazy } from "react";
 import { useRoutes, Routes, Route } from "react-router-dom";
-import { LogoProvider } from "./components/LogoProvider";
 import Home from "./components/home";
 import Login from "./pages/admin/Login";
-import Dashboard from "./pages/admin/Dashboard";
-import SectionsManager from "./pages/admin/sections/SectionsManager";
-import HeroEditor from "./pages/admin/sections/HeroEditor";
-import AboutEditor from "./pages/admin/sections/AboutEditor";
-import MissionVisionEditor from "./pages/admin/sections/MissionVisionEditor";
-import ContactEditor from "./pages/admin/sections/ContactEditor";
-import ServicesManager from "./pages/admin/services/ServicesManager";
-import ClientsManager from "./pages/admin/clients/ClientsManager";
-import PartnersManager from "./pages/admin/partners/PartnersManager";
-import ImagesManager from "./pages/admin/images/ImagesManager";
-import SiteSettings from "./pages/admin/settings/SiteSettings";
+import ProtectedRoute from "./components/ProtectedRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
+import routes from "tempo-routes";
+import { Loader2 } from "lucide-react";
+
+// Lazy load admin components to improve performance
+const Dashboard = lazy(() => import("./pages/admin/Dashboard"));
+const SectionsManager = lazy(
+  () => import("./pages/admin/sections/SectionsManager"),
+);
+const HeroEditor = lazy(() => import("./pages/admin/sections/HeroEditor"));
+const AboutEditor = lazy(() => import("./pages/admin/sections/AboutEditor"));
+const MissionVisionEditor = lazy(
+  () => import("./pages/admin/sections/MissionVisionEditor"),
+);
+const ContactEditor = lazy(
+  () => import("./pages/admin/sections/ContactEditor"),
+);
+const ServicesManager = lazy(
+  () => import("./pages/admin/services/ServicesManager"),
+);
+const ClientsManager = lazy(
+  () => import("./pages/admin/clients/ClientsManager"),
+);
+const PartnersManager = lazy(
+  () => import("./pages/admin/partners/PartnersManager"),
+);
+const ImagesManager = lazy(() => import("./pages/admin/images/ImagesManager"));
+const SiteSettings = lazy(() => import("./pages/admin/settings/SiteSettings"));
+
+// Loading fallback for lazy-loaded components
+const LoadingFallback = () => (
+  <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900">
+    <div className="flex flex-col items-center">
+      <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
+      <p className="text-muted-foreground">Carregando...</p>
+    </div>
+  </div>
+);
 
 function App() {
   return (
-    <LogoProvider>
+    <ErrorBoundary>
+      {/* Tempo routes */}
+      {import.meta.env.VITE_TEMPO && useRoutes(routes)}
+
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/wemsadmin" element={<Login />} />
-        <Route path="/wemsadmin/dashboard" element={<Dashboard />} />
-        <Route path="/wemsadmin/sections" element={<SectionsManager />} />
-        <Route path="/wemsadmin/sections/hero" element={<HeroEditor />} />
-        <Route path="/wemsadmin/sections/about" element={<AboutEditor />} />
+        <Route
+          path="/wemsadmin/dashboard"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<LoadingFallback />}>
+                <Dashboard />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/wemsadmin/sections"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<LoadingFallback />}>
+                <SectionsManager />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/wemsadmin/sections/hero"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<LoadingFallback />}>
+                <HeroEditor />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/wemsadmin/sections/about"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<LoadingFallback />}>
+                <AboutEditor />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/wemsadmin/sections/mission"
-          element={<MissionVisionEditor />}
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<LoadingFallback />}>
+                <MissionVisionEditor />
+              </Suspense>
+            </ProtectedRoute>
+          }
         />
-        <Route path="/wemsadmin/sections/contact" element={<ContactEditor />} />
-        <Route path="/wemsadmin/services" element={<ServicesManager />} />
-        <Route path="/wemsadmin/clients" element={<ClientsManager />} />
-        <Route path="/wemsadmin/partners" element={<PartnersManager />} />
-        <Route path="/wemsadmin/images" element={<ImagesManager />} />
-        <Route path="/wemsadmin/settings" element={<SiteSettings />} />
+        <Route
+          path="/wemsadmin/sections/contact"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<LoadingFallback />}>
+                <ContactEditor />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/wemsadmin/services"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<LoadingFallback />}>
+                <ServicesManager />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/wemsadmin/clients"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<LoadingFallback />}>
+                <ClientsManager />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/wemsadmin/partners"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<LoadingFallback />}>
+                <PartnersManager />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/wemsadmin/images"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<LoadingFallback />}>
+                <ImagesManager />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/wemsadmin/settings"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<LoadingFallback />}>
+                <SiteSettings />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Add this before any catchall route */}
+        {import.meta.env.VITE_TEMPO && <Route path="/tempobook/*" />}
       </Routes>
-    </LogoProvider>
+    </ErrorBoundary>
   );
 }
 

@@ -66,14 +66,62 @@ const PartnersSection = ({
   ],
 }: PartnersProps) => {
   const [partnersData, setPartnersData] = useState<Partner[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Load partners from localStorage on component mount
   useEffect(() => {
-    const savedPartners = loadPartners(
-      partners.map((p, index) => ({ id: index + 1, ...p })),
-    );
-    setPartnersData(savedPartners);
-  }, []);
+    const loadPartnersData = async () => {
+      setIsLoading(true);
+      try {
+        // Use default partners as fallback
+        const defaultPartnersList = partners.map((p, index) => ({
+          id: index + 1,
+          ...p,
+        }));
+
+        try {
+          // Try to load from localStorage first as a fallback
+          const localData = localStorage.getItem("wems_partners");
+          if (localData) {
+            try {
+              const parsedData = JSON.parse(localData);
+              if (Array.isArray(parsedData) && parsedData.length > 0) {
+                setPartnersData(parsedData);
+                setIsLoading(false);
+                return;
+              }
+            } catch (e) {
+              console.error("Error parsing partners from localStorage:", e);
+            }
+          }
+
+          // Otherwise load from IndexedDB
+          const savedPartners = await loadPartners(defaultPartnersList);
+          if (savedPartners && savedPartners.length > 0) {
+            setPartnersData(savedPartners);
+          } else {
+            // If no data in IndexedDB, use default partners
+            setPartnersData(defaultPartnersList);
+          }
+        } catch (error) {
+          console.error("Error loading partners:", error);
+          // Fallback to default partners if loading fails
+          setPartnersData(defaultPartnersList);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadPartnersData();
+  }, [partners]);
+
+  // If no partners data is available after loading, use default partners
+  useEffect(() => {
+    if (!isLoading && partnersData.length === 0) {
+      setPartnersData(partners.map((p, index) => ({ id: index + 1, ...p })));
+    }
+  }, [isLoading, partnersData, partners]);
 
   return (
     <section
@@ -103,24 +151,46 @@ const PartnersSection = ({
           viewport={{ once: true }}
           className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8"
         >
-          {partnersData.map((partner, index) => (
-            <motion.div
-              key={partner.id}
-              initial={{ opacity: 0, scale: 0.8 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3, delay: index * 0.1 }}
-              viewport={{ once: true }}
-              whileHover={{ y: -5 }}
-              className="flex flex-col items-center justify-center p-6 bg-white dark:bg-slate-800 rounded-lg shadow-sm hover:shadow-md transition-all duration-300"
-            >
-              <img
-                src={partner.logo}
-                alt={`${partner.name} logo`}
-                className="h-12 object-contain mb-4"
-              />
-              <p className="font-medium text-center">{partner.name}</p>
-            </motion.div>
-          ))}
+          {isLoading
+            ? // Show loading placeholders
+              Array(12)
+                .fill(0)
+                .map((_, index) => (
+                  <motion.div
+                    key={`skeleton-${index}`}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                    className="flex flex-col items-center justify-center p-6 bg-white dark:bg-slate-800 rounded-lg shadow-sm h-32"
+                  >
+                    <div className="w-24 h-12 bg-slate-200 dark:bg-slate-700 rounded mb-4 animate-pulse"></div>
+                    <div className="w-20 h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                  </motion.div>
+                ))
+            : // Show actual partner data
+              partnersData.map((partner, index) => (
+                <motion.div
+                  key={partner.id || index}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                  viewport={{ once: true }}
+                  whileHover={{ y: -5 }}
+                  className="flex flex-col items-center justify-center p-6 bg-white dark:bg-slate-800 rounded-lg shadow-sm hover:shadow-md transition-all duration-300"
+                >
+                  <img
+                    src={partner.logo}
+                    alt={`${partner.name} logo`}
+                    className="h-12 object-contain mb-4"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src =
+                        "https://api.dicebear.com/7.x/initials/svg?seed=" +
+                        partner.name;
+                    }}
+                  />
+                  <p className="font-medium text-center">{partner.name}</p>
+                </motion.div>
+              ))}
         </motion.div>
       </div>
     </section>

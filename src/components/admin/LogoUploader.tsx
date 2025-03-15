@@ -7,6 +7,7 @@ import { Upload, Save, Check } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { saveSiteLogo, loadSiteLogo } from "@/lib/localDb";
 import { useLogo } from "@/components/LogoProvider";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface LogoUploaderProps {
   onLogoChange?: (logoUrl: string) => void;
@@ -17,16 +18,31 @@ const LogoUploader = ({ onLogoChange }: LogoUploaderProps) => {
   const [logoUrl, setLogoUrl] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const { refreshLogo } = useLogo();
 
-  // Load logo from localStorage on component mount
+  // Load logo from database on component mount
   useEffect(() => {
     const defaultLogo = "/wems-logo.png";
-    const savedLogo = loadSiteLogo(defaultLogo);
-    setLogoUrl(savedLogo);
-    setPreviewUrl(savedLogo);
+    setIsLoading(true);
+
+    const loadLogo = async () => {
+      try {
+        const savedLogo = await loadSiteLogo(defaultLogo);
+        setLogoUrl(savedLogo);
+        setPreviewUrl(savedLogo);
+      } catch (error) {
+        console.error("Error loading logo:", error);
+        setLogoUrl(defaultLogo);
+        setPreviewUrl(defaultLogo);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadLogo();
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -51,33 +67,42 @@ const LogoUploader = ({ onLogoChange }: LogoUploaderProps) => {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsSaving(true);
 
-    // In a real application, you would upload the file to a server here
-    // For this demo, we'll just use the preview URL
-    const newLogoUrl = previewUrl;
+    try {
+      // In a real application, you would upload the file to a server here
+      // For this demo, we'll just use the preview URL
+      const newLogoUrl = previewUrl;
 
-    // Save to localStorage
-    saveSiteLogo(newLogoUrl);
-    setLogoUrl(newLogoUrl);
+      // Save to database
+      await saveSiteLogo(newLogoUrl);
+      setLogoUrl(newLogoUrl);
 
-    // Refresh logo in context
-    refreshLogo();
+      // Refresh logo in context
+      refreshLogo();
 
-    // Notify parent component if callback provided
-    if (onLogoChange) {
-      onLogoChange(newLogoUrl);
-    }
+      // Notify parent component if callback provided
+      if (onLogoChange) {
+        onLogoChange(newLogoUrl);
+      }
 
-    setTimeout(() => {
-      setIsSaving(false);
       toast({
         title: "Logo salvo",
         description:
           "O novo logo foi salvo com sucesso e será usado em todo o site.",
       });
-    }, 1000);
+    } catch (error) {
+      console.error("Error saving logo:", error);
+      toast({
+        title: "Erro ao salvar",
+        description:
+          "Ocorreu um erro ao salvar o logo. Por favor, tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -89,7 +114,9 @@ const LogoUploader = ({ onLogoChange }: LogoUploaderProps) => {
         <div className="space-y-4">
           <div className="flex justify-center">
             <div className="w-48 h-24 border rounded-md flex items-center justify-center overflow-hidden bg-white">
-              {previewUrl ? (
+              {isLoading ? (
+                <Skeleton className="w-full h-full" />
+              ) : previewUrl ? (
                 <img
                   src={previewUrl}
                   alt="Logo Preview"
@@ -114,11 +141,12 @@ const LogoUploader = ({ onLogoChange }: LogoUploaderProps) => {
                   accept="image/*"
                   onChange={handleFileChange}
                   className="cursor-pointer"
+                  disabled={isLoading}
                 />
               </div>
               <Button
                 onClick={handleSave}
-                disabled={isUploading || isSaving || !previewUrl}
+                disabled={isUploading || isSaving || !previewUrl || isLoading}
                 className="min-w-24"
               >
                 {isSaving ? (

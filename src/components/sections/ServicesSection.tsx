@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion, useAnimation } from "framer-motion";
 import ServiceCard from "@/components/cards/ServiceCard";
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { loadServices, Service } from "@/lib/localDb";
 
 interface ServicesProps {
@@ -18,6 +18,7 @@ const ServicesSection = ({
   const [visibleCards, setVisibleCards] = useState(6);
   const [hasMoreCards, setHasMoreCards] = useState(true);
   const [services, setServices] = useState<Service[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Initial services data for fallback
   const initialServices = [
@@ -81,10 +82,22 @@ const ServicesSection = ({
     },
   ];
 
-  // Load services from localStorage on component mount
+  // Load services from IndexedDB on component mount
   useEffect(() => {
-    const savedServices = loadServices(initialServices);
-    setServices(savedServices);
+    const fetchServices = async () => {
+      try {
+        setIsLoading(true);
+        const savedServices = await loadServices(initialServices);
+        setServices(savedServices);
+      } catch (error) {
+        console.error("Error loading services:", error);
+        setServices(initialServices);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchServices();
   }, []);
 
   useEffect(() => {
@@ -131,42 +144,55 @@ const ServicesSection = ({
           </motion.p>
         </div>
 
-        <motion.div
-          animate={controls}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
-        >
-          {services.slice(0, visibleCards).map((service, index) => (
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
+            <p className="text-muted-foreground">Carregando serviços...</p>
+          </div>
+        ) : (
+          <>
             <motion.div
-              key={service.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.1 }}
+              animate={controls}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
             >
-              <ServiceCard
-                title={service.title}
-                description={service.description}
-                icon={service.icon}
-                detailedInfo={service.detailedInfo}
-                features={service.features}
-                linkUrl={`#${service.title.toLowerCase().replace(/\s+/g, "-")}`}
-                linkText="Saiba mais"
-              />
+              {services.slice(0, visibleCards).map((service, index) => (
+                <motion.div
+                  key={service.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                >
+                  <ServiceCard
+                    title={service.title}
+                    description={service.description}
+                    icon={service.icon}
+                    detailedInfo={service.detailedInfo}
+                    features={service.features}
+                    linkUrl={`#${service.title.toLowerCase().replace(/\s+/g, "-")}`}
+                    linkText="Saiba mais"
+                  />
+                </motion.div>
+              ))}
             </motion.div>
-          ))}
-        </motion.div>
 
-        {hasMoreCards && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.3 }}
-            className="flex justify-center mt-12"
-          >
-            <Button onClick={showMoreCards} variant="outline" className="group">
-              <span>Ver Mais Serviços</span>
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Button>
-          </motion.div>
+            {hasMoreCards && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.3 }}
+                className="flex justify-center mt-12"
+              >
+                <Button
+                  onClick={showMoreCards}
+                  variant="outline"
+                  className="group"
+                >
+                  <span>Ver Mais Serviços</span>
+                  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </motion.div>
+            )}
+          </>
         )}
       </motion.div>
     </section>
